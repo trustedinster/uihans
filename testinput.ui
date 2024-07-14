@@ -1658,62 +1658,8 @@ QPushButton:hover {
        </property>
       </widget>
      </item>
-     <item>
-      <widget class="QPushButton" name="buttonOk">
-       <property name="text">
-        <string>Ok</string>
-       </property>
-       <property name="icon">
-        <iconset theme="dialog-ok">
-         <normaloff>.</normaloff>.</iconset>
-       </property>
-       <property name="default">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
     </layout>
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>Collapsible</class>
-   <extends>QWidget</extends>
-   <header>src/collapsible.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>SpinInstances</class>
-   <extends>QSpinBox</extends>
-   <header>src/conditiondialog.h</header>
-  </customwidget>
-  <customwidget>
-   <class>ScriptEditor</class>
-   <extends>QPlainTextEdit</extends>
-   <header>src/scripts.h</header>
-  </customwidget>
-  <customwidget>
-   <class>CoordEdit</class>
-   <extends>QLineEdit</extends>
-   <header>src/conditiondialog.h</header>
-  </customwidget>
- </customwidgets>
- <tabstops>
-  <tabstop>buttonOk</tabstop>
-  <tabstop>buttonCancel</tabstop>
-  <tabstop>comboBoxCat</tabstop>
-  <tabstop>comboBoxType</tabstop>
-  <tabstop>spinBox</tabstop>
-  <tabstop>lineEditX1</tabstop>
-  <tabstop>lineEditZ1</tabstop>
-  <tabstop>lineEditX2</tabstop>
-  <tabstop>lineEditZ2</tabstop>
-  <tabstop>comboBoxRelative</tabstop>
-  <tabstop>stackedWidget</tabstop>
- </tabstops>
- <resources>
-  <include location="../rc/icons.qrc"/>
- </resources>
- <connections/>
 </ui>
