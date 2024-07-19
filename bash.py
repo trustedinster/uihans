@@ -26,6 +26,76 @@ inside_app_key = '你的app_key'
 Inside_Usr = {"test": "0test0"}
 ERR_TRIES = 3
 
+# 配置文件字典项
+DICT_SHOULD_HAVE = ['Usr_name', 'Protect_key', 'APP_ID', 'APP_ID_TEST_WORD', 'APP_KEY', 'APP_KEY_TEST_WORD']
+
+
+# 配置文件有效性检查
+def is_right(text: dict) -> bool:
+    global DICT_SHOULD_HAVE
+    for t in DICT_SHOULD_HAVE:
+        if t not in text.keys():
+            return False
+    return True
+
+
+# 生成MD5摘要的函数
+def make_md5(s, encoding='utf-8'):
+    """
+    生成MD5摘要。
+
+    :param s: 需要生成摘要的字符串
+    :param encoding: 字符串编码方式，默认为'utf-8'
+    :return: 返回MD5摘要的十六进制字符串
+    """
+    return md5(s.encode(encoding)).hexdigest()
+
+
+# 加密函数
+def encrypter(text: str, password: str) -> Tuple[List[int], List[int]]:
+    """
+    加密文本。
+
+    :param text: 需要加密的文本
+    :param password: 加密密钥
+    :return: 返回加密后的文本和测试密钥
+    """
+    output = list()
+    test = list()
+    passkey = int()
+    for char in password:
+        passkey += ord(char)
+    for char in "Successfully":
+        test.append(ord(char) * passkey)
+    for char in text:
+        output.append(ord(char) * passkey)
+    return output, test
+
+
+# 解密函数
+def decrypter(text: List[int], password: str, test_key: list) -> Tuple[Optional[str], bool]:
+    """
+    解密文本。
+
+    :param text: 需要解密的文本
+    :param password: 解密密钥
+    :param test_key: 测试密钥
+    :return: 返回解密后的文本和解密是否成功
+    """
+    output = str()
+    passkey = int()
+    test = str()
+    for t in password:
+        passkey += ord(t)
+    for t in test_key:
+        test += chr(int(t / passkey))
+    if test != "Successfully":
+        return None, False
+    for t in text:
+        output += chr(int(t / passkey))
+    return output, True
+
+
 # 用户选择启动模式
 start_mode = input("选择启动模式\n0. 命令行模式\n1. 窗口模式\n2. 安全模式（独立配置）\n输入选项：")
 # 根据启动模式配置日志和文件路径
@@ -49,29 +119,25 @@ else:
                 filemode='a')
     Brain_dir = "Brains.pkl"
     Settings_dir = "settings.pkl"
-    # 尝试加载设置和知识库
-    if Brain_dir in listdir():
-        with open(Brain_dir, "rb") as file:
-            Brain = load(file)
-    else:
-        Brain = dict()
-    if Settings_dir in listdir():
-        with open(Settings_dir, "rb") as file:
-            Settings = load(file)
-    else:
-        Settings = {"Usr_name": "未登录用户", "Protect_key": None}
-
-
-# 生成MD5摘要的函数
-def make_md5(s, encoding='utf-8'):
-    """
-    生成MD5摘要。
-
-    :param s: 需要生成摘要的字符串
-    :param encoding: 字符串编码方式，默认为'utf-8'
-    :return: 返回MD5摘要的十六进制字符串
-    """
-    return md5(s.encode(encoding)).hexdigest()
+# 尝试加载设置和知识库
+if Brain_dir in listdir():
+    with open(Brain_dir, "rb") as file:
+        Brain = load(file)
+else:
+    Brain = dict()
+if Settings_dir in listdir():
+    with open(Settings_dir, "rb") as file:
+        Settings = load(file)
+        if is_right(Settings):
+            key = make_md5(input("输入设置的加密密玥："))
+            APP_ID, state1 = decrypter(Settings["APP_ID"], key, Settings["APP_ID_TEST_WORD"])
+            APP_KEY, state2 = decrypter(Settings["APP_KEY"], key, Settings["APP_KEY_TEST_WORD"])
+            if not (state1 and state2):
+                Settings = {"Usr_name": "未登录用户", "Protect_key": None}
+        else:
+            Settings = {"Usr_name": "未登录用户", "Protect_key": None}
+else:
+    Settings = {"Usr_name": "未登录用户", "Protect_key": None}
 
 
 # 使用百度翻译API翻译文本的函数
@@ -145,63 +211,19 @@ def smart_translate(text: str, appid: str, appkey: str) -> str:
         return out
 
 
-# 加密函数
-def encrypter(text: str, password: str) -> Tuple[List[int], List[int]]:
-    """
-    加密文本。
-
-    :param text: 需要加密的文本
-    :param password: 加密密钥
-    :return: 返回加密后的文本和测试密钥
-    """
-    output = list()
-    test = list()
-    passkey = int()
-    for char in password:
-        passkey += ord(char)
-    for char in "Successfully":
-        test.append(ord(char) * passkey)
-    for char in text:
-        output.append(ord(char) * passkey)
-    return output, test
-
-
-# 解密函数
-def decrypter(text: List[int], password: str, test_key: list) -> Tuple[Optional[str], bool]:
-    """
-    解密文本。
-
-    :param text: 需要解密的文本
-    :param password: 解密密钥
-    :param test_key: 测试密钥
-    :return: 返回解密后的文本和解密是否成功
-    """
-    output = str()
-    passkey = int()
-    test = str()
-    for t in password:
-        passkey += ord(t)
-    for t in test_key:
-        test += chr(t / passkey)
-    if test != "Successfully":
-        return None, False
-    for t in text:
-        out = t / passkey
-        # noinspection PyTypeChecker
-        output += chr(out)
-    return output, True
-
-
 # 打印欢迎信息
 print("欢迎回来：{}".format(Settings["Usr_name"]))
 
+if is_right(Settings):
 # 获取用户输入的操作
-operation = input(
-    "选择操作\n0. 开始单文件处理\n1. 开始批量处理\n2. 开始测试（账号test，密码0test0）\n3. 设置\n输入选项：")
-
+    operation = input(
+        "选择操作\n0. 开始单文件处理\n1. 开始批量处理\n2. 开始测试（账号test，密码0test0）\n3. 设置\n输入选项：")
+else:
+    operation = input(
+        "您还未绑定API，请按3开始绑定，或按2开始测试\n2. 开始测试（账号test，密码0test0）\n3. 设置\n输入选项：")
 # 根据操作设置文件路径
 FROM_FILE = SAVE_FILE = None
-if operation == "0":
+if operation == "0" and is_right(Settings):
     # 单文件处理模式
     while FROM_FILE is None:
         print("请在打开的窗口中选择待处理的UI文件（如果没看到窗口，请检查是否被其它窗口遮挡）")
@@ -211,7 +233,7 @@ if operation == "0":
         print("请在打开的窗口中选择保存的UI文件（如果没看到窗口，请检查是否被其它窗口遮挡）")
         SAVE_FILE = filesavebox(msg="选择处理后UI保存位置", title="选择输出位置", filetypes=["*.ui", "*.xml"],
                                 default="*.ui")
-elif operation == "1":
+elif operation == "1" and is_right(Settings):
     # 批量处理模式
     while FROM_FILE is None:
         print("请在打开的窗口中选择待处理的UI文件文件夹（如果没看到窗口，请检查是否被其它窗口遮挡）")
@@ -258,6 +280,7 @@ elif operation == "2":
         input("回车键继续")
         exit(-1)
 elif operation == "3":
+    Settings["Usr_name"] = "未命名用户"
     while True:
         choice_settings = input("输入选择的设置项：\n1. 重设本地储存内容加密密钥\n2. 重设用户APP ID\n 3. 重设用户密钥\n"
                                 "4. 设置API服务器（不支持）\n5. 翻译知识库相关\n6. 换个名字\n7. 保存并关闭程序\n输入选项：")
@@ -266,20 +289,20 @@ elif operation == "3":
                 input("输入本地储存内容加密密钥（记住了，不然怕是你永远解锁不了。可以用中文哦）："))
         elif choice_settings == "2":
             if Settings["Protect_key"] is not None:
-                Settings["APP_ID"] = encrypter(input("输入你从百度翻译开放平台获取的APP ID："), Settings["Protect_key"])[
-                    0]
+                Settings["APP_ID"], Settings["APP_ID_TEST_WORD"] = \
+                    encrypter(input("输入你从百度翻译开放平台获取的APP ID："), Settings["Protect_key"])
             else:
                 print("奶奶滴，你知道明文有多恐怖吗？你怕是明天免费额度就得跑完！快按1设置加密密钥")
         elif choice_settings == "3":
             if Settings["Protect_key"] is not None:
-                Settings["APP_KEY"] = encrypter(input("输入你从百度翻译开放平台获取的密钥："), Settings["Protect_key"])[
-                    0]
+                Settings["APP_KEY"], Settings["APP_KEY_TEST_WORD"] = \
+                    encrypter(input("输入你从百度翻译开放平台获取的密钥："), Settings["Protect_key"])
             else:
                 print("奶奶滴，你知道明文有多恐怖吗？你怕是明天免费额度就得跑完！快按1设置加密密钥")
         elif choice_settings == "4":
             print("不是说了用不了吗，你怎么不听呢？")
         elif choice_settings == "5":
-            choice = input("输入 你干嘛：\n1. 让我看看\n2. 我来 设置")
+            choice = input("输入 你干嘛：\n1. 让我看看\n2. 我来 设置\n输入选项：")
             if choice == "1":
                 for i in Brain.keys():
                     print("原文：{} 翻译：{}".format(i, Brain[i]))
