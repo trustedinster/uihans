@@ -5,7 +5,7 @@ from random import randint
 from hashlib import md5
 from logging import basicConfig, warning, error, debug, DEBUG
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 from easygui import fileopenbox, filesavebox, diropenbox
 from requests import post
@@ -19,6 +19,7 @@ from Inside import inside_app_id, inside_app_key
 文件格式示例：
 inside_app_id = '你的app_key'
 inside_app_key = '你的app_key'
+（警告：不要把Inside.py同步到git上！）
 """
 
 # 用户字典和错误尝试次数常量
@@ -30,7 +31,7 @@ start_mode = input("选择启动模式\n0. 命令行模式\n1. 窗口模式\n2. 
 # 根据启动模式配置日志和文件路径
 if start_mode == "1":
     print("太可惜了，还梅能支持")
-elif start_mode == "2":
+if start_mode == "2":
     # 安全模式配置
     basicConfig(level=DEBUG, format='%(asctime)s [%(levelname)s] %(module)s %(message)s',
                 datefmt='%Y-%m-%d %A %H:%M:%S', filename="SAFE{}MODE.log".format(datetime.now().strftime('%Y%m%d')),
@@ -39,13 +40,15 @@ elif start_mode == "2":
     Brain_dir = "Brains_safe_mode.pkl"
     open(Brain_dir, "wb").close()
     open(Settings_dir, "wb").close()
+    Brain = dict()
+    Settings = {"Usr_name": "安全模式", "Protect_key": None}
 else:
     # 命令行模式配置
     basicConfig(level=DEBUG, format='%(asctime)s [%(levelname)s] %(module)s %(message)s',
                 datefmt='%Y-%m-%d %A %H:%M:%S', filename="{}.log".format(datetime.now().strftime('%Y%m%d')),
                 filemode='a')
     Brain_dir = "Brains.pkl"
-    Settings_dir = "Settings.pkl"
+    Settings_dir = "settings.pkl"
     # 尝试加载设置和知识库
     if Brain_dir in listdir():
         with open(Brain_dir, "rb") as file:
@@ -130,20 +133,20 @@ def smart_translate(text: str, appid: str, appkey: str) -> str:
     global Brain
     out = str()
     try:
-        split_text = text.split(' ')
+        split_texts = text.split(' ')
     except AttributeError:
         return translate(text, appid, appkey)
     else:
-        for i in split_text:
-            if i in Brain.keys():
-                out += Brain[i]
+        for split_text in split_texts:
+            if split_text in Brain.keys():
+                out += Brain[split_text]
             else:
-                out += translate(i, appid, appkey)
+                out += translate(split_text, appid, appkey)
         return out
 
 
 # 加密函数
-def encrypter(text: str, password: str) -> Tuple[str, str]:
+def encrypter(text: str, password: str) -> Tuple[List[int], List[int]]:
     """
     加密文本。
 
@@ -151,20 +154,20 @@ def encrypter(text: str, password: str) -> Tuple[str, str]:
     :param password: 加密密钥
     :return: 返回加密后的文本和测试密钥
     """
-    output = str()
-    test = str()
+    output = list()
+    test = list()
     passkey = int()
-    for i in password:
-        passkey += ord(i)
-    for i in "Successfully":
-        test += ord(i) * passkey
-    for i in text:
-        output += ord(i) * passkey
+    for char in password:
+        passkey += ord(char)
+    for char in "Successfully":
+        test.append(ord(char) * passkey)
+    for char in text:
+        output.append(ord(char) * passkey)
     return output, test
 
 
 # 解密函数
-def decrypter(text: str, password: str, test_key: Optional[str] = None) -> Tuple[Optional[str], bool]:
+def decrypter(text: List[int], password: str, test_key: list) -> Tuple[Optional[str], bool]:
     """
     解密文本。
 
@@ -176,14 +179,16 @@ def decrypter(text: str, password: str, test_key: Optional[str] = None) -> Tuple
     output = str()
     passkey = int()
     test = str()
-    for i in password:
-        passkey += ord(i)
-    for i in test_key:
-        test += chr(i / passkey)
+    for t in password:
+        passkey += ord(t)
+    for t in test_key:
+        test += chr(t / passkey)
     if test != "Successfully":
         return None, False
-    for i in text:
-        output += chr(i / passkey)
+    for t in text:
+        out = t / passkey
+        # noinspection PyTypeChecker
+        output += chr(out)
     return output, True
 
 
@@ -257,15 +262,18 @@ elif operation == "3":
         choice_settings = input("输入选择的设置项：\n1. 重设本地储存内容加密密钥\n2. 重设用户APP ID\n 3. 重设用户密钥\n"
                                 "4. 设置API服务器（不支持）\n5. 翻译知识库相关\n6. 换个名字\n7. 保存并关闭程序\n输入选项：")
         if choice_settings == "1":
-            Settings["Protect_key"] = input("输入本地储存内容加密密钥（记住了，不然怕是你永远解锁不了。可以用中文哦）：")
+            Settings["Protect_key"] = make_md5(
+                input("输入本地储存内容加密密钥（记住了，不然怕是你永远解锁不了。可以用中文哦）："))
         elif choice_settings == "2":
             if Settings["Protect_key"] is not None:
-                Settings["APP_ID"] = encrypter(input("输入你从百度翻译开放平台获取的APP ID："), Settings["Protect_key"])[0]
+                Settings["APP_ID"] = encrypter(input("输入你从百度翻译开放平台获取的APP ID："), Settings["Protect_key"])[
+                    0]
             else:
                 print("奶奶滴，你知道明文有多恐怖吗？你怕是明天免费额度就得跑完！快按1设置加密密钥")
         elif choice_settings == "3":
             if Settings["Protect_key"] is not None:
-                Settings["APP_KEY"] = encrypter(input("输入你从百度翻译开放平台获取的密钥："), Settings["Protect_key"])[0]
+                Settings["APP_KEY"] = encrypter(input("输入你从百度翻译开放平台获取的密钥："), Settings["Protect_key"])[
+                    0]
             else:
                 print("奶奶滴，你知道明文有多恐怖吗？你怕是明天免费额度就得跑完！快按1设置加密密钥")
         elif choice_settings == "4":
@@ -325,8 +333,8 @@ if operation == "1":
                                                  appkey=Settings["APP_KEY"])
                             elem.text = to
                         except KeyboardInterrupt:
-                            with open("settings.pkl", "wb") as file:
-                                dump({"KNOWLEDGE": Brain}, file)
+                            with open("settings.pkl", "wb") as save_file:
+                                dump({"KNOWLEDGE": Brain}, save_file)
                             exit(-1)
                         small_bar.write("翻译完成：{}".format(to))
                     except BaseException as err:
